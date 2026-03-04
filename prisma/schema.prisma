@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LocationType {
+  COUNTRY
+  STATE
+  CITY
+}
+
+enum TransportType {
+  FLIGHT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+
+  trips         Trip[]
+  bucketList    BucketListItem[]
+}
+
+model Location {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  type      LocationType
+  latitude  Float
+  longitude Float
+  iso2      String?
+  iso3      String?
+
+  countryId String?
+  country   Location?  @relation("CountryChildren", fields: [countryId], references: [id])
+  children  Location[] @relation("CountryChildren")
+
+  stateId   String?
+  state     Location?  @relation("StateChildren", fields: [stateId], references: [id])
+  stateChildren Location[] @relation("StateChildren")
+
+  tripStops     TripStop[]
+  airports      Airport[]
+  bucketList    BucketListItem[]
+
+  @@index([type])
+  @@index([countryId])
+  @@index([stateId])
+  @@index([name])
+}
+
+model Airport {
+  id       String  @id @default(cuid())
+  name     String
+  iataCode String  @unique
+  icaoCode String?
+  latitude Float
+  longitude Float
+
+  cityId String?
+  city   Location? @relation(fields: [cityId], references: [id])
+
+  departureSegments TransportationSegment[] @relation("DepartureAirport")
+  arrivalSegments   TransportationSegment[] @relation("ArrivalAirport")
+
+  @@index([iataCode])
+  @@index([cityId])
+  @@index([name])
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  companions  String[]
+  createdAt   DateTime @default(now())
+
+  stops       TripStop[]
+  transport   TransportationSegment[]
+
+  @@index([userId])
+}
+
+model TripStop {
+  id               String    @id @default(cuid())
+  tripId           String
+  trip             Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  locationId       String
+  location         Location  @relation(fields: [locationId], references: [id])
+  arrivalDate      DateTime?
+  departureDate    DateTime?
+  hasOvernightStay Boolean   @default(false)
+  notes            String?
+  orderIndex       Int       @default(0)
+  createdAt        DateTime  @default(now())
+
+  @@index([tripId])
+  @@index([locationId])
+}
+
+model TransportationSegment {
+  id                 String        @id @default(cuid())
+  tripId             String
+  trip               Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  type               TransportType @default(FLIGHT)
+  departureAirportId String?
+  departureAirport   Airport?      @relation("DepartureAirport", fields: [departureAirportId], references: [id])
+  arrivalAirportId   String?
+  arrivalAirport     Airport?      @relation("ArrivalAirport", fields: [arrivalAirportId], references: [id])
+  departureDate      DateTime?
+  arrivalDate        DateTime?
+  airline            String?
+  flightNumber       String?
+  notes              String?
+  orderIndex         Int           @default(0)
+  createdAt          DateTime      @default(now())
+
+  @@index([tripId])
+}
+
+model BucketListItem {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+  notes      String?
+  priority   Int?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
