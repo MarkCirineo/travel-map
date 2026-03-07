@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +45,21 @@ function toDateInputValue(d: string | Date | null | undefined): string {
     if (!d) return "";
     const date = typeof d === "string" ? new Date(d) : d;
     return date.toISOString().split("T")[0];
+}
+
+function addDaysStr(dateStr: string, days: number): string {
+    if (!dateStr) return "";
+    const date = new Date(dateStr + "T00:00:00");
+    const result = addDays(date, days);
+    const y = result.getFullYear();
+    const m = String(result.getMonth() + 1).padStart(2, "0");
+    const d = String(result.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+function toDate(value: string): Date | undefined {
+    if (!value) return undefined;
+    return new Date(value + "T00:00:00");
 }
 
 export function TripForm({ trip }: TripFormProps) {
@@ -84,6 +101,17 @@ export function TripForm({ trip }: TripFormProps) {
     );
     const [saving, setSaving] = useState(false);
 
+    function handleStartDateChange(newStart: string) {
+        setStartDate(newStart);
+        if (newStart && (!endDate || endDate < newStart)) {
+            setEndDate(addDaysStr(newStart, 1));
+        }
+    }
+
+    function handleEndDateChange(newEnd: string) {
+        setEndDate(newEnd);
+    }
+
     function addCompanion() {
         const name = companionInput.trim();
         if (name && !companions.includes(name)) {
@@ -96,14 +124,82 @@ export function TripForm({ trip }: TripFormProps) {
         setCompanions(companions.filter((c) => c !== name));
     }
 
+    function addStop() {
+        const prevStop = stops[stops.length - 1];
+        const arrival = prevStop?.departureDate || startDate || "";
+        const departure = endDate || (arrival ? addDaysStr(arrival, 1) : "");
+        setStops([...stops, { ...emptyStop, arrivalDate: arrival, departureDate: departure }]);
+    }
+
     function updateStop(index: number, data: TripStopData) {
+        const prev = stops[index];
         const next = [...stops];
+
+        if (data.arrivalDate !== prev.arrivalDate && data.arrivalDate) {
+            const smartDeparture = endDate || addDaysStr(data.arrivalDate, 1);
+            if (!data.departureDate || data.departureDate < data.arrivalDate) {
+                data = { ...data, departureDate: smartDeparture };
+            }
+        }
+
         next[index] = data;
         setStops(next);
     }
 
+    function addFlight() {
+        const n = segments.length;
+        let depDate = startDate || "";
+        let arrDate = startDate || "";
+
+        if (n > 0) {
+            depDate = segments[n - 1].departureDate || depDate;
+            arrDate = segments[n - 1].arrivalDate || arrDate;
+        }
+
+        setSegments([
+            ...segments,
+            { ...emptySegment, departureDate: depDate, arrivalDate: arrDate },
+        ]);
+    }
+
     function updateSegment(index: number, data: TransportSegmentData) {
+        const prev = segments[index];
         const next = [...segments];
+
+        if (index > 0) {
+            const prevFlight = segments[index - 1];
+            const airportsChanged =
+                data.departureAirportId !== prev.departureAirportId ||
+                data.arrivalAirportId !== prev.arrivalAirportId;
+
+            if (airportsChanged) {
+                const isReturn =
+                    !!data.departureAirportId &&
+                    !!data.arrivalAirportId &&
+                    data.departureAirportId === prevFlight.arrivalAirportId &&
+                    data.arrivalAirportId === prevFlight.departureAirportId;
+
+                if (isReturn && endDate) {
+                    const matchesPrev =
+                        data.departureDate === prevFlight.departureDate &&
+                        data.arrivalDate === prevFlight.arrivalDate;
+                    if (matchesPrev) {
+                        data = { ...data, departureDate: endDate, arrivalDate: endDate };
+                    }
+                } else if (!isReturn) {
+                    const matchesEnd =
+                        endDate && data.departureDate === endDate && data.arrivalDate === endDate;
+                    if (matchesEnd) {
+                        data = {
+                            ...data,
+                            departureDate: prevFlight.departureDate,
+                            arrivalDate: prevFlight.arrivalDate,
+                        };
+                    }
+                }
+            }
+        }
+
         next[index] = data;
         setSegments(next);
     }
@@ -198,19 +294,27 @@ export function TripForm({ trip }: TripFormProps) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label>Start Date</Label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
+                                onChange={handleStartDateChange}
+                                placeholder="Start date"
                             />
                         </div>
                         <div>
                             <Label>End Date</Label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
+                                onChange={handleEndDateChange}
+                                placeholder="End date"
+                                defaultMonth={
+                                    startDate ? toDate(addDaysStr(startDate, 1)) : undefined
+                                }
                             />
+                            {startDate && endDate && endDate < startDate && (
+                                <p className="text-xs text-destructive mt-1">
+                                    End date is before start date
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div>
@@ -254,12 +358,7 @@ export function TripForm({ trip }: TripFormProps) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Stops</CardTitle>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStops([...stops, { ...emptyStop }])}
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={addStop}>
                         <Plus className="h-4 w-4 mr-1" />
                         Add Stop
                     </Button>
@@ -278,6 +377,8 @@ export function TripForm({ trip }: TripFormProps) {
                             data={stop}
                             onChange={updateStop}
                             onRemove={(idx) => setStops(stops.filter((_, j) => j !== idx))}
+                            tripStartDate={startDate}
+                            tripEndDate={endDate}
                         />
                     ))}
                 </CardContent>
@@ -286,12 +387,7 @@ export function TripForm({ trip }: TripFormProps) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Flights</CardTitle>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSegments([...segments, { ...emptySegment }])}
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={addFlight}>
                         <Plus className="h-4 w-4 mr-1" />
                         Add Flight
                     </Button>
@@ -309,6 +405,8 @@ export function TripForm({ trip }: TripFormProps) {
                             data={seg}
                             onChange={updateSegment}
                             onRemove={(idx) => setSegments(segments.filter((_, j) => j !== idx))}
+                            tripStartDate={startDate}
+                            tripEndDate={endDate}
                         />
                     ))}
                 </CardContent>

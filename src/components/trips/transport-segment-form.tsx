@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { AirportSearch } from "@/components/airport-search";
 import { Trash2 } from "lucide-react";
 
@@ -18,11 +19,18 @@ export interface TransportSegmentData {
     notes: string;
 }
 
+function toDate(value: string): Date | undefined {
+    if (!value) return undefined;
+    return new Date(value + "T00:00:00");
+}
+
 interface TransportSegmentFormProps {
     index: number;
     data: TransportSegmentData;
     onChange: (index: number, data: TransportSegmentData) => void;
     onRemove: (index: number) => void;
+    tripStartDate?: string;
+    tripEndDate?: string;
 }
 
 export function TransportSegmentForm({
@@ -30,10 +38,16 @@ export function TransportSegmentForm({
     data,
     onChange,
     onRemove,
+    tripStartDate,
+    tripEndDate,
 }: TransportSegmentFormProps) {
     function update(partial: Partial<TransportSegmentData>) {
         onChange(index, { ...data, ...partial });
     }
+
+    const depDefaultMonth = toDate(data.departureDate) ?? toDate(tripStartDate ?? "");
+    const arrDefaultMonth =
+        toDate(data.arrivalDate) ?? toDate(data.departureDate) ?? toDate(tripStartDate ?? "");
 
     return (
         <div className="rounded-lg border p-4 space-y-3">
@@ -82,19 +96,28 @@ export function TransportSegmentForm({
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <Label className="text-xs">Departure Date</Label>
-                    <Input
-                        type="date"
+                    <DatePicker
                         value={data.departureDate}
-                        onChange={(e) => update({ departureDate: e.target.value })}
+                        onChange={(val) => update({ departureDate: val })}
+                        placeholder="Departure date"
+                        defaultMonth={depDefaultMonth}
                     />
                 </div>
                 <div>
                     <Label className="text-xs">Arrival Date</Label>
-                    <Input
-                        type="date"
+                    <DatePicker
                         value={data.arrivalDate}
-                        onChange={(e) => update({ arrivalDate: e.target.value })}
+                        onChange={(val) => update({ arrivalDate: val })}
+                        placeholder="Arrival date"
+                        defaultMonth={arrDefaultMonth}
                     />
+                    {data.departureDate &&
+                        data.arrivalDate &&
+                        data.arrivalDate < data.departureDate && (
+                            <p className="text-xs text-destructive mt-1">
+                                Arrival is before departure
+                            </p>
+                        )}
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { LocationSearch } from "@/components/location-search";
 import { Trash2 } from "lucide-react";
 
@@ -15,17 +16,35 @@ export interface TripStopData {
     notes: string;
 }
 
+function toDate(value: string): Date | undefined {
+    if (!value) return undefined;
+    return new Date(value + "T00:00:00");
+}
+
 interface TripStopFormProps {
     index: number;
     data: TripStopData;
     onChange: (index: number, data: TripStopData) => void;
     onRemove: (index: number) => void;
+    tripStartDate?: string;
+    tripEndDate?: string;
 }
 
-export function TripStopForm({ index, data, onChange, onRemove }: TripStopFormProps) {
+export function TripStopForm({
+    index,
+    data,
+    onChange,
+    onRemove,
+    tripStartDate,
+    tripEndDate,
+}: TripStopFormProps) {
     function update(partial: Partial<TripStopData>) {
         onChange(index, { ...data, ...partial });
     }
+
+    const arrivalDefaultMonth = toDate(data.arrivalDate) ?? toDate(tripStartDate ?? "");
+    const departureDefaultMonth =
+        toDate(data.departureDate) ?? toDate(data.arrivalDate) ?? toDate(tripEndDate ?? "");
 
     return (
         <div className="rounded-lg border p-4 space-y-3">
@@ -53,19 +72,28 @@ export function TripStopForm({ index, data, onChange, onRemove }: TripStopFormPr
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <Label className="text-xs">Arrival</Label>
-                    <Input
-                        type="date"
+                    <DatePicker
                         value={data.arrivalDate}
-                        onChange={(e) => update({ arrivalDate: e.target.value })}
+                        onChange={(val) => update({ arrivalDate: val })}
+                        placeholder="Arrival date"
+                        defaultMonth={arrivalDefaultMonth}
                     />
                 </div>
                 <div>
                     <Label className="text-xs">Departure</Label>
-                    <Input
-                        type="date"
+                    <DatePicker
                         value={data.departureDate}
-                        onChange={(e) => update({ departureDate: e.target.value })}
+                        onChange={(val) => update({ departureDate: val })}
+                        placeholder="Departure date"
+                        defaultMonth={departureDefaultMonth}
                     />
+                    {data.arrivalDate &&
+                        data.departureDate &&
+                        data.departureDate < data.arrivalDate && (
+                            <p className="text-xs text-destructive mt-1">
+                                Departure is before arrival
+                            </p>
+                        )}
                 </div>
             </div>
             <div className="flex items-center gap-2">
