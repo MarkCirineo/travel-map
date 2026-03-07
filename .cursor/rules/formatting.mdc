@@ -8,7 +8,7 @@ alwaysApply: true
 This project uses Prettier for code formatting. Match these settings in all generated code:
 
 - 4-space indentation (no tabs)
-- Single quotes for strings
+- Double quotes for strings
 - Semicolons at end of statements
 - Trailing commas everywhere (ES5+)
 - 100 character line width
