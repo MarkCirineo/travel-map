@@ -101,15 +101,15 @@ public/
 
 ## NPM Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server |
-| `npm run build` | Production build |
-| `npm start` | Start production server |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed locations and airports |
-| `npm run db:reset` | Reset database and re-run migrations |
-| `npm run lint` | Run ESLint |
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Start dev server                     |
+| `npm run build`      | Production build                     |
+| `npm start`          | Start production server              |
+| `npm run db:migrate` | Run Prisma migrations                |
+| `npm run db:seed`    | Seed locations and airports          |
+| `npm run db:reset`   | Reset database and re-run migrations |
+| `npm run lint`       | Run ESLint                           |
 
 ## Deployment (Hetzner / VPS)
 
@@ -117,15 +117,15 @@ public/
 2. Set up PostgreSQL and configure `DATABASE_URL` in `.env`
 3. Generate a secure `AUTH_SECRET` (`openssl rand -base64 32`)
 4. Run migrations and seed:
-   ```bash
-   npx prisma migrate deploy
-   npm run db:seed
-   ```
+    ```bash
+    npx prisma migrate deploy
+    npm run db:seed
+    ```
 5. Build and start:
-   ```bash
-   npm run build
-   npm start
-   ```
+    ```bash
+    npm run build
+    npm start
+    ```
 6. Put behind a reverse proxy (nginx/Caddy) with HTTPS
 
 ## Seed Data Sources

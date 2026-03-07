@@ -1,0 +1,17 @@
+---
+description: Code formatting standards (Prettier config)
+alwaysApply: true
+---
+
+# Formatting
+
+This project uses Prettier for code formatting. Match these settings in all generated code:
+
+- 4-space indentation (no tabs)
+- Single quotes for strings
+- Semicolons at end of statements
+- Trailing commas everywhere (ES5+)
+- 100 character line width
+- Spaces inside object braces: `{ foo }` not `{foo}`
+
+After making changes, run `yarn format` to normalize formatting.
